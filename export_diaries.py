@@ -1,3 +1,25 @@
+# -*- coding: utf-8 -*-
+r"""把《Chill with You: Lo-Fi Story》日历里的日记导出成 txt。
+
+原理
+----
+游戏用 Easy Save 3 存盘，.es3 文件其实是 gzip 压缩过的 JSON 变体
+（数字 key 没加引号，如 `"DiaryList" : {1:{...}}`）。
+解压后日记正文位于 `DiaryList[日].DiaryText`，是 UTF-8 中文。
+本脚本直接读存档，不需要进游戏、不需要 mod、不需要 BepInEx。
+
+用法
+----
+    直接运行（自动探测存档目录）:
+        python export_diaries.py
+    手动指定存档目录（Steam 用户目录，其下是若干数字文件夹）:
+        python export_diaries.py --save-dir "D:\\...\\SaveData\\Release\\v2"
+    手动指定输出目录:
+        python export_diaries.py --out-dir "D:\\我的日记"
+
+打包成 exe 后双击即可；导出的文件在 exe 同目录的「日记导出」文件夹。
+建议导出前先退出游戏，让当天新写的日记落盘。
+"""
 import sys
 import os
 import gzip
