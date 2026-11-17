@@ -1,0 +1,12 @@
+# 打包构建产物
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
+
+# Release 资产（单独上传到 Releases，不进源码仓库）
+release-assets/
+
+# ！！用户真实日记，绝对不能提交 ！！
+日记导出/
