@@ -200,7 +200,48 @@ def write_out(entries, out_dir):
     return all_path, daily_dir
 
 
-def main():
+def interactive_menu(args):
+    """双击 exe（无命令行参数）时进入的交互菜单。"""
+    while True:
+        print()
+        print('=' * 46)
+        print(' Chill with You 日记导出器')
+        print('=' * 46)
+        print(' [1] 一键导出所有日记')
+        print(' [2] 仅导出某一天日记（直接回车 = 今天）')
+        print(' [0] 退出')
+        choice = input('请选择：').strip()
+        if choice == '0':
+            return
+        if choice == '1':
+            run_export(args)
+            return
+        if choice == '2':
+            today = date.today()
+            default = '%04d%02d%02d' % (today.year, today.month, today.day)
+            s = input('输入日期（如 20260103，回车 = 今天 %s）：' % default).strip()
+            target = parse_date_input(s) if s else today
+            if target is None:
+                print('  日期格式不对，请输入 8 位数字，如 20260103')
+                continue
+            run_export(args, only_day=target)
+            return
+        print('  请输入 0 / 1 / 2')
+
+
+def parse_date_input(s):
+    """把 20260103 / 2026-01-03 / 2026.1.3 解析成 date，失败返回 None。"""
+    s = s.strip().replace('-', '').replace('/', '').replace('.', '')
+    if not s.isdigit() or len(s) != 8:
+        return None
+    try:
+        return date(int(s[:4]), int(s[4:6]), int(s[6:8]))
+    except ValueError:
+        return None
+
+
+def run_export(args, only_day=None):
+    """扫描存档并导出。only_day 不为 None 时只导出那一天。"""
     ap = argparse.ArgumentParser(description='导出 Chill with You: Lo-Fi Story 的日历日记为 txt')
     ap.add_argument('--save-dir', action='append', metavar='DIR',
                     help='存档目录（可重复指定）。默认是自动探测；也可直接指向某个 .es3 文件')
@@ -234,13 +275,54 @@ def main():
             input('\n按回车退出...')
         return
 
+    if only_day is not None:
+        day_key = (only_day.year, only_day.month, only_day.day)
+        if day_key not in entries:
+            print('\n这一天（%04d-%02d-%02d）没有写过日记。' % day_key)
+            if getattr(sys, 'frozen', False):
+                input('\n按回车退出...')
+            return
+        txt, _fn = entries[day_key]
+        daily_dir = os.path.join(out_dir, 'daily')
+        os.makedirs(daily_dir, exist_ok=True)
+        try:
+            wd = WEEK[only_day.weekday()]
+        except Exception:
+            wd = ''
+        day_path = os.path.join(daily_dir, '%04d-%02d-%02d.txt' % day_key)
+        with open(day_path, 'w', encoding='utf-8') as f:
+            f.write('%04d-%02d-%02d %s\n\n%s\n' % (day_key[0], day_key[1],
+                                                   day_key[2], wd, txt))
+        print('\n完成！导出 1 篇：' + day_path)
+        if getattr(sys, 'frozen', False):
+            input('\n按回车退出...')
+        return
+
     all_path, daily_dir = write_out(entries, out_dir)
+    keys = sorted(entries.keys())
     print('\n完成！共 %d 篇，日期范围 %04d-%02d-%02d ~ %04d-%02d-%02d' %
-          (len(entries), *next(iter(sorted(entries.keys()))), *sorted(entries.keys())[-1]))
+          (len(entries), keys[0][0], keys[0][1], keys[0][2],
+           keys[-1][0], keys[-1][1], keys[-1][2]))
     print('汇总文件：' + all_path)
     print('每日文件：' + daily_dir)
     if getattr(sys, 'frozen', False):
         input('\n按回车退出...')
+
+
+def main():
+    ap = argparse.ArgumentParser(description='导出 Chill with You: Lo-Fi Story 的日历日记为 txt')
+    ap.add_argument('--save-dir', action='append', metavar='DIR',
+                    help='存档目录（可重复指定）。默认是自动探测；也可直接指向某个 .es3 文件')
+    ap.add_argument('--out-dir', metavar='DIR',
+                    help='输出目录，默认在脚本/exe 同目录的「日记导出」')
+    args = ap.parse_args()
+
+    # 双击 exe（无任何命令行参数）时进交互菜单；带参数则保持命令行行为
+    if getattr(sys, 'frozen', False) and len(sys.argv) == 1:
+        interactive_menu(args)
+        return
+
+    run_export(args)
 
 
 if __name__ == '__main__':
